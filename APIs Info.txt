@@ -1,0 +1,116 @@
+网站地址，下面的localhost改为公网IP
+http://localhost:8000/
+
+请求状态码返回200为正常，其它状态码例如500为错误
+每一个请求都会返回一个code，如下所示：
+code为0则代表成功
+{
+    "code": 0
+}
+code为1则代表失败
+{
+    "code": 1
+}
+code还可能是其他值，见previous和next
+
+Login登录
+http://localhost:8000/login
+POST请求json
+{
+    "username": "holmesjj",
+    "password": "123456"
+}
+返回登录成功json
+{
+    "code": 0
+}
+返回登录失败json
+{
+    "code": 1
+}
+
+Face Recognition人脸识别
+http://localhost:8000/recognize
+POST请求multipart/form-data
+key: recognize
+value: jpg或png图，文件名必须为username
+返回识别成功json
+{
+    "code": 0
+}
+返回识别失败json
+{
+    "code": 1
+}
+
+Detect上传肺部CT图检测
+http://localhost:8000/detect
+POST请求multipart/form-data
+key: detect
+value: dcm文件
+返回检测成功json，id为该dcm图的id，用于show，previous，next请求
+{
+    "code": 0,
+    "id": 1
+}
+返回检测失败json
+{
+    "code": 1
+}
+
+Previous上一张图
+http://localhost:8000/previous?id=2
+GET请求
+返回当前图（当前id=2）的上一张图成功json，id为该dcm图的id，用于show，previous，next请求
+{
+    "code": 0,
+    "id": 1
+}
+当前图（当前id=2）为第一张图
+{
+    "code": -1
+}
+
+返回当前图（当前id=2）的上一张图失败json
+{
+    "code": 1
+}
+
+Next下一张图
+http://localhost:8000/next?id=2
+GET请求
+返回当前图（当前id=2）的下一张图成功json，id为该dcm图的id，用于show，previous，next请求
+{
+    "code": 0,
+    "id": 3
+}
+当前图（当前id=2）为最后一张图
+{
+    "code": -1
+}
+
+返回当前图（当前id=2）的下一张图失败json
+{
+    "code": 1
+}
+
+Show展示当前图（当前图id为1），全部图的后缀都是png
+http://localhost:8000/show/1.png
+
+Draw画框并保存
+http://localhost:8000/draw
+给id为2的图画框，boxes是一个json数组，里面包括多个框的信息，x和y代表框的左上角坐标，width和height代表框的宽高
+POST请求json
+{
+    "id": 2,
+    "boxes": "[{'x': 677.42216, 'y': 197.97662, 'width': 867.79767, 'height': 999.78214}, {'x': 1792.69064, 'y': 402.5525, 'width': 617.02734, 'height': 1204.358}]"
+}
+返回保存画框记录成功json，id为当前dcm图（上一张或下一张）的id，用于show，previous，next请求
+{
+    "code": 0,
+    "id": 2
+}
+返回保存画框记录失败json
+{
+    "code": 1
+}

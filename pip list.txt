@@ -1,0 +1,34 @@
+Package                 Version
+----------------------- -------------------
+certifi                 2021.5.30
+click                   8.0.1
+cycler                  0.10.0
+dlib                    19.22.0
+face-recognition        1.3.0
+face-recognition-models 0.3.0
+importlib-metadata      4.6.1
+kiwisolver              1.3.1
+matplotlib              3.4.2
+mysql-connector-python  8.0.25
+numpy                   1.21.0
+Pillow                  8.3.1
+pip                     21.1.3
+protobuf                3.17.3
+pydicom                 2.1.2
+pyparsing               2.4.7
+python-dateutil         2.8.1
+setuptools              52.0.0.post20210125
+SimpleITK               2.0.2
+six                     1.16.0
+tornado                 6.1
+typing-extensions       3.10.0.0
+wheel                   0.36.2
+zipp                    3.5.0
+
+For face-recognition, need to install openssl and cmake
+openssl: sudo apt-get install libssl-dev
+cmake: https://cmake.org/download/
+Download and extract, run the commands below
+./bootstrap
+make
+sudo make install
