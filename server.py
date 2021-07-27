@@ -1,7 +1,3 @@
-from PIL import Image
-from shutil import move
-from typing import Optional, Awaitable
-
 import os
 import json
 import numpy as np
@@ -10,6 +6,11 @@ import tornado.ioloop
 import mysql.connector
 import pydicom
 import face_recognition
+
+from PIL import Image
+from shutil import move
+from typing import Optional, Awaitable
+from pydicom.pixel_data_handlers.util import apply_voi_lut
 
 PORT = 8000
 MYSQL = {
@@ -20,16 +21,45 @@ MYSQL = {
 }
 
 
-def convert_dicom_to_png(path):
-    ds = pydicom.dcmread(path)
-    image = ds.pixel_array.astype(float)
-    # float pixels
-    rescaled_image = (np.maximum(image, 0) / np.max(image)) * 255
-    # integers pixels
-    final_image = np.uint8(rescaled_image)
-    final_image = Image.fromarray(final_image)
+# https://www.kaggle.com/raddar/convert-dicom-to-np-array-the-correct-way
+def read_xray(path, voi_lut=True, fix_monochrome=True):
+    dicom = pydicom.read_file(path)
+    # VOI LUT (if available by DICOM device) is used to transform raw DICOM data to
+    # "human-friendly" view
+    if voi_lut:
+        data = apply_voi_lut(dicom.pixel_array, dicom)
+    else:
+        data = dicom.pixel_array
+    # depending on this value, X-ray may look inverted - fix that:
+    if fix_monochrome and dicom.PhotometricInterpretation == "MONOCHROME1":
+        data = np.amax(data) - data
+    data = data - np.min(data)
+    data = data / np.max(data)
+    data = (data * 255).astype(np.uint8)
+    return data
+
+
+# https://www.kaggle.com/xhlulu/vinbigdata-process-and-resize-to-image
+def resize(data, size=None, keep_ratio=False, resample=Image.LANCZOS):
+    im = Image.fromarray(data)
+    if size is not None:
+        if keep_ratio:
+            im.thumbnail((size, size), resample)
+        else:
+            im = im.resize((size, size), resample)
+    return im
+
+
+def convert_dicom_to_image(path, voi_lut=True, fix_monochrome=True,
+                           size=None, keep_ratio=False, resample=Image.LANCZOS,
+                           jpg=True):
+    xray = read_xray(path, voi_lut, fix_monochrome)
+    image = resize(xray, size, keep_ratio, resample)
     path_name, extension = os.path.splitext(path)
-    final_image.save(path_name + '.png')
+    if jpg == 1:
+        image.save(path_name + '.jpg')
+    else:
+        image.save(path_name + '.png')
 
 
 def recognize(username, path):
@@ -156,7 +186,7 @@ class DetectRequestHandler(BaseRequestHandler):
                 file_bytes.write(file.body)
                 file_bytes.close()
                 try:
-                    convert_dicom_to_png(f'detect/{file.filename}')
+                    convert_dicom_to_image(f'detect/{file.filename}', jpg=False)
                     db = mysql.connector.connect(
                         host=MYSQL['host'],
                         user=MYSQL['user'],
