@@ -1,6 +1,12 @@
 import os
+import gc
 import json
 import numpy as np
+import random
+import glob
+import torch
+import torchvision
+import torchvision.transforms as T
 import tornado.web
 import tornado.ioloop
 import mysql.connector
@@ -11,6 +17,7 @@ from PIL import Image
 from shutil import move
 from typing import Optional, Awaitable
 from pydicom.pixel_data_handlers.util import apply_voi_lut
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 PORT = 8000
 MYSQL = {
@@ -19,6 +26,16 @@ MYSQL = {
     'passwd': '',
     'database': 'covid-19-detection',
 }
+# "negative", "typical", "indeterminate", "atypical"
+NUM_CLASSES = 4
+MODEL_PATH = 'model/best-checkpoint.bin'
+
+
+def random_color():
+    b = random.randint(0, 255)
+    g = random.randint(0, 255)
+    r = random.randint(0, 255)
+    return b, g, r
 
 
 # https://www.kaggle.com/raddar/convert-dicom-to-np-array-the-correct-way
@@ -72,6 +89,57 @@ def recognize(username, path):
         return True
     else:
         return False
+
+
+def get_model(checkpoint_path=None, pretrained=False):
+    model = FasterRCNNDetector(pretrained=pretrained)
+    # Load the trained weights
+    if checkpoint_path is not None:
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        del checkpoint
+        gc.collect()
+    return model.cuda()
+
+
+def predict(path):
+    img = Image.open(path)
+    transform = T.Compose([T.ToTensor()])
+    img = transform(img)
+    model = get_model(MODEL_PATH)
+    model.eval()
+    with torch.no_grad():
+        if torch.cuda.is_available():
+            device = torch.device("cuda:0")
+            model.cuda()
+            img = img.cuda()
+        else:
+            device = torch.device("cpu")
+            model.cpu()
+            img = img.cpu()
+        outputs = model([img])
+        outputs = [{k: v.to(device) for k, v in t.items()} for t in outputs]
+    return outputs
+
+
+def empty_cache():
+    torch.cuda.empty_cache()
+
+
+class FasterRCNNDetector(torch.nn.Module):
+
+    def __init__(self, pretrained=False, **kwargs):
+        super(FasterRCNNDetector, self).__init__()
+        # load pre-trained model incl. head
+        self.model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=pretrained,
+                                                                          pretrained_backbone=pretrained)
+        # get number of input features for the classifier custom head
+        in_features = self.model.roi_heads.box_predictor.cls_score.in_features
+        # replace the pre-trained head with a new one
+        self.model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES)
+
+    def forward(self, images, targets=None):
+        return self.model(images, targets)
 
 
 class BaseRequestHandler(tornado.web.RequestHandler):
@@ -187,6 +255,12 @@ class DetectRequestHandler(BaseRequestHandler):
                 file_bytes.close()
                 try:
                     convert_dicom_to_image(f'detect/{file.filename}', jpg=False)
+                    convert_dicom_to_image(f'detect/{file.filename}', size=256)
+                    outputs = predict(f'detect/{path_name}.jpg')
+                    boxes = outputs[0]['boxes'].cpu().numpy().astype(np.float64).tolist()
+                    labels = outputs[0]['labels'].cpu().numpy().astype(np.int32).tolist()
+                    scores = outputs[0]['scores'].cpu().numpy().astype(np.float64).tolist()
+                    empty_cache()
                     db = mysql.connector.connect(
                         host=MYSQL['host'],
                         user=MYSQL['user'],
@@ -203,11 +277,25 @@ class DetectRequestHandler(BaseRequestHandler):
                     os.rename(f'detect/{path_name}.png', f'detect/{result[0]}.png')
                     move(f'detect/{result[0]}{extension}', f'unmarked/{result[0]}{extension}')
                     move(f'detect/{result[0]}.png', f'show/{result[0]}.png')
+                    os.remove(f'detect/{path_name}.jpg')
                     response = {
                         'code': 0,
-                        'id': result[0]
+                        'id': result[0],
+                        'boxes_256': boxes,
+                        'labels': labels,
+                        'scores': scores
+                    }
+                except FileNotFoundError:
+                    files = glob.glob('detect/*')
+                    for f in files:
+                        os.remove(f)
+                    response = {
+                        'code': 1
                     }
                 except RuntimeError:
+                    files = glob.glob('detect/*')
+                    for f in files:
+                        os.remove(f)
                     response = {
                         'code': 1
                     }
