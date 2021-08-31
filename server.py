@@ -397,6 +397,7 @@ class DrawRequestHandler(BaseRequestHandler):
     def post(self):
         data = json.loads(self.request.body.decode('utf-8'))
         page_id = data['id']
+        class_id = data['class']
         boxes = data['boxes']
         print('id %s, boxes %s' % (page_id, boxes))
         db = mysql.connector.connect(
@@ -406,7 +407,9 @@ class DrawRequestHandler(BaseRequestHandler):
             database=MYSQL['database']
         )
         cursor = db.cursor()
-        cursor.execute(f'update radiographs set boxes = "{boxes}", is_marked = 0 where id = {page_id};')
+        cursor.execute(
+            f'update radiographs set class = "{class_id}" boxes = "{boxes}" is_marked = 0 where id = {page_id};'
+        )
         db.commit()
         # Previous
         cursor.execute(

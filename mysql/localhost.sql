@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jul 18, 2021 at 10:39 AM
+-- Generation Time: Aug 31, 2021 at 06:08 PM
 -- Server version: 10.4.20-MariaDB
 -- PHP Version: 7.3.29
 
@@ -31,6 +31,7 @@ USE `covid-19-detection`;
 
 CREATE TABLE `radiographs` (
   `id` int(11) NOT NULL,
+  `class` int(1) DEFAULT NULL,
   `boxes` text DEFAULT NULL,
   `is_marked` int(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -39,17 +40,17 @@ CREATE TABLE `radiographs` (
 -- Dumping data for table `radiographs`
 --
 
-INSERT INTO `radiographs` (`id`, `boxes`, `is_marked`) VALUES
-(1, NULL, 1),
-(2, '[{\'x\': 677.42216, \'y\': 197.97662, \'width\': 867.79767, \'height\': 999.78214}, {\'x\': 1792.69064, \'y\': 402.5525, \'width\': 617.02734, \'height\': 1204.358}]', 0),
-(3, NULL, 1),
-(4, '[{\'x\': 276.72917, \'y\': 627.42968, \'width\': 910.58859, \'height\': 1655.81519}, {\'x\': 1864.18229, \'y\': 745.22656, \'width\': 875.06262, \'height\': 1535.09888}]', 0),
-(5, NULL, 1),
-(6, NULL, 1),
-(7, NULL, 1),
-(8, NULL, 1),
-(9, NULL, 1),
-(10, NULL, 1);
+INSERT INTO `radiographs` (`id`, `class`, `boxes`, `is_marked`) VALUES
+(1, 1, '[{\'x\': 708.9902411182949, \'y\': 412.74285714285713, \'width\': 669.0471289426163, \'height\': 1427.9571428571428}, {\'x\': 1674.282118697194, \'y\': 362.8142857142857, \'width\': 902.0486166340747, \'height\': 1700.9}]', 0),
+(2, 2, '[{\'x\': 677.42216, \'y\': 197.97662, \'width\': 867.79767, \'height\': 999.78214}, {\'x\': 1792.69064, \'y\': 402.5525, \'width\': 617.02734, \'height\': 1204.358}]', 0),
+(3, NULL, NULL, 1),
+(4, 3, '[{\'x\': 276.72917, \'y\': 627.42968, \'width\': 910.58859, \'height\': 1655.81519}, {\'x\': 1864.18229, \'y\': 745.22656, \'width\': 875.06262, \'height\': 1535.09888}]', 0),
+(5, NULL, NULL, 1),
+(6, NULL, NULL, 1),
+(7, NULL, NULL, 1),
+(8, NULL, NULL, 1),
+(9, NULL, NULL, 1),
+(10, NULL, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -98,7 +99,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `radiographs`
 --
 ALTER TABLE `radiographs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `users`
